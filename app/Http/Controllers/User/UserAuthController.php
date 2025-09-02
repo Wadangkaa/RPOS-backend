@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Users\UserLoginRequest;
 use App\Services\Users\UserAuthService;
+use App\Utilities\ApiResponse;
 
 class UserAuthController extends Controller
 {
@@ -12,21 +14,22 @@ class UserAuthController extends Controller
         //
     }
 
-    public function login($request)
+    public function login(UserLoginRequest $request)
     {
-        $data = $this->authService->login($request);
-        return response()->json($data);
+        $validatedData = $request->validated();
+        $data = $this->authService->login($validatedData);
+        return ApiResponse::success($data, 'Login successful');
     }
 
     public function logout()
     {
         $this->authService->logout();
-        return response()->json(['message' => 'Successfully logged out']);
+        return ApiResponse::success(null, 'Logout successful');
     }
 
     public function profile()
     {
         $data = $this->authService->profile();
-        return response()->json($data);
+        return ApiResponse::success($data, 'Profile');
     }
 }
