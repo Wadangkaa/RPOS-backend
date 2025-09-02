@@ -10,7 +10,7 @@ class InvalidCredentialException extends Exception
 {
     public function render(): JsonResponse
     {
-        return ApiResponse::notFound('Invalid credentials');
+        return ApiResponse::error('Invalid credentials', 401);
     }
 }
 
