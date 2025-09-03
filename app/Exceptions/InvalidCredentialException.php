@@ -8,7 +8,7 @@ use Illuminate\Http\JsonResponse;
 
 class InvalidCredentialException extends Exception
 {
-    public function render(): JsonResponse
+    public function render(): ApiResponse
     {
         return ApiResponse::error('Invalid credentials', 401);
     }

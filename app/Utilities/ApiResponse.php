@@ -2,56 +2,99 @@
 
 namespace App\Utilities;
 
+use Illuminate\Contracts\Support\Responsable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\ResourceCollection;
+use Illuminate\Validation\ValidationException;
 
-class ApiResponse
+class ApiResponse implements Responsable
 {
-    public static function success(mixed $data = null, string $message = 'Success'): JsonResponse
+    protected int $httpCode;
+
+    protected mixed $data;
+
+    protected string $message;
+
+    public function __construct(
+        int    $httpCode,
+               $data = null,
+        string $message = ''
+    )
+    {
+        if (!(($httpCode >= 200 && $httpCode < 300) || ($httpCode >= 400 && $httpCode < 600))) {
+            throw new \RuntimeException($httpCode . ' is not valid');
+        }
+        $this->httpCode = $httpCode;
+        $this->data = $data;
+        $this->message = $message;
+    }
+
+    public function toResponse($request): JsonResponse
+    {
+        $payload = [
+            'message' => $this->message,
+        ];
+
+        if ($this->httpCode >= 200 && $this->httpCode < 300) {
+            $payload['data'] = $this->data;
+        } else {
+            $payload['error'] = $this->data;
+        }
+
+        return response()->json($payload, $this->httpCode);
+    }
+
+    public static function success($data, string $message = 'Data fetched successfully'): static
     {
         if ($data instanceof ResourceCollection) {
             $data = $data->response()->getData(true);
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => $message,
-            'data' => $data,
-        ], 200);
+        return new static(200, $data, $message);
     }
 
-    public static function created(mixed $data = null, string $message = 'Created successfully'): JsonResponse
+    public static function created($data, string $message = 'Resource created successfully'): static
     {
-        return response()->json([
-            'status' => true,
-            'message' => $message,
-            'data' => $data,
-        ], 201);
+        return new static(201, $data, $message);
     }
 
-    public static function error(string $message = 'Something went wrong', int $code = 500, mixed $data = null): JsonResponse
+    public static function notFound(string $message = 'Resource not found'): static
     {
-        return response()->json([
-            'status' => false,
-            'message' => $message,
-            'data' => $data,
-        ], $code);
+        return new static(404, [], $message);
     }
 
-    public static function validationError(mixed $errors = null, string $message = 'Validation failed'): JsonResponse
+    public static function badRequest(string $message = 'Bad request'): static
     {
-        return response()->json([
-            'status' => false,
-            'message' => $message,
-            'errors' => $errors,
-        ], 422);
+        return new static(400, [], $message);
     }
 
-    public static function notFound(string $message = 'Data not found'): JsonResponse
+    public static function unauthorized(string $message = 'Unauthorized'): static
     {
-        return response()->json([
-            'status' => false,
-            'message' => $message,
-        ], 404);
+        return new static(401, [], $message);
+    }
+
+    public static function forbidden(string $message = 'Forbidden'): static
+    {
+        return new static(403, [], $message);
+    }
+
+    public static function error(string $message = 'Something went wrong', int $code = 500, $errors = []): static
+    {
+        return new static($code, $errors, $message);
+    }
+
+    public static function validationFailed(ValidationException $e): static
+    {
+        return new static(422, $e->errors(), 'Validation failed');
+    }
+
+    public static function deleted(string $message = 'Resource deleted successfully'): static
+    {
+        return new static(200, null, $message);
+    }
+
+    public function getData(): mixed
+    {
+        return $this->data;
     }
 }
